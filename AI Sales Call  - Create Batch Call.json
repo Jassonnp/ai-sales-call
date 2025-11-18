@@ -1,0 +1,808 @@
+{
+  "name": "AI Sales Call  - Create Batch Call - Aria Vista - Demo Project",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            },
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -352,
+        -496
+      ],
+      "id": "01dc22cf-fe27-42e7-918e-eebd7e677012",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appXXXXXXXXXXXXXX",
+          "mode": "list",
+          "cachedResultName": "Real Estate Lead Capture & Follow-Up App",
+          "cachedResultUrl": "https://airtable.com/appXXXXXXXXXXXXXX"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblXXXXXXXXXXXXXX",
+          "mode": "list",
+          "cachedResultName": "Lead New",
+          "cachedResultUrl": "https://airtable.com/appXXXXXXXXXXXXXX/tblXXXXXXXXXXXXXX"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        96,
+        -512
+      ],
+      "id": "dc47478a-651f-4f61-b8ab-0dd5e374f05f",
+      "name": "Search records"
+    },
+    {
+      "parameters": {
+        "batchSize": 5,
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1424,
+        -496
+      ],
+      "id": "d0a57264-cb97-4453-accf-6b1801228a5f",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f06bc762-7a26-4903-ae6c-1dfe8a84c175",
+              "leftValue": "={{ $json['Lead stage'] }}",
+              "rightValue": "=New Lead",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "aec9333d-1ef8-4a50-bf2c-db4b67bddc71",
+              "leftValue": "={{ $json['Lead stage'] }}",
+              "rightValue": "Contacted",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {
+          "ignoreCase": false
+        }
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        320,
+        -496
+      ],
+      "id": "9c1e6c47-01d8-4e1c-b7d3-6a4d659139ee",
+      "name": "Filter Lead Stage"
+    },
+    {
+      "parameters": {
+        "jsCode": "const hour = parseInt($('Schedule Trigger').item.json.Hour, 10);\n\nlet output = \"00:00\";\nif (hour >= 3  && hour <= 5)  output = \"03:00\";\nelse if (hour >= 6  && hour <= 8)  output = \"06:00\";\nelse if (hour >= 9  && hour <= 11) output = \"09:00\";\nelse if (hour >= 12 && hour <= 14) output = \"12:00\";\nelse if (hour >= 15 && hour <= 17) output = \"15:00\";\nelse if (hour >= 18 && hour <= 20) output = \"18:00\";\nelse if (hour >= 21 && hour <= 23) output = \"21:00\";\n\nreturn [{ json: { output } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        752,
+        -416
+      ],
+      "id": "5a9c8039-3476-4b7b-8b0d-cb85e6a4987a",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d90134ff-64fd-4611-8621-fd2b1c8be478",
+              "leftValue": "={{ $json[\"Call - Time Slot (GMT+8)\"] }}",
+              "rightValue": "={{ $('Code in JavaScript').first().json.output }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {
+          "ignoreCase": false
+        }
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        1184,
+        -496
+      ],
+      "id": "1e5ee205-0b50-49a5-9b60-e997dcc589a8",
+      "name": "Filter"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        976,
+        -496
+      ],
+      "id": "be4c70de-7523-464c-a491-efa2c17d6934",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "881a2be5-5dfb-4fed-8c37-43e6f1dcf77c",
+              "leftValue": "={{ $json['Day of week'] }}",
+              "rightValue": "Saturday",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            },
+            {
+              "id": "b13c2cbf-7ab5-42d0-a12e-0530de13c96d",
+              "leftValue": "={{ $json['Day of week'] }}",
+              "rightValue": "Sunday",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -128,
+        -496
+      ],
+      "id": "ecde9eaa-f1b1-4dbd-a2fd-e5f94808845e",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "base": {
+          "__rl": true,
+          "value": "appXXXXXXXXXXXXXX",
+          "mode": "list",
+          "cachedResultName": "Real Estate Lead Capture & Follow-Up App",
+          "cachedResultUrl": "https://airtable.com/appXXXXXXXXXXXXXX"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblXXXXXXXXXXXXXX",
+          "mode": "list",
+          "cachedResultName": "Lead",
+          "cachedResultUrl": "https://airtable.com/appXXXXXXXXXXXXXX/tblXXXXXXXXXXXXXX"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Calling Done": "={{ (parseInt($('Loop Over Items').item.json['Calling Done'] || 0, 10)) + 1 }}",
+            "id": "={{ $('Loop Over Items').item.json.id }}",
+            "Batch Call ID": "={{ $json.call_id }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Lead ID",
+              "displayName": "Lead ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Fullname",
+              "displayName": "Fullname",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Work phone",
+              "displayName": "Work phone",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Country",
+              "displayName": "Country",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Malaysia",
+                  "value": "Malaysia"
+                },
+                {
+                  "name": "Australia",
+                  "value": "Australia"
+                },
+                {
+                  "name": "UAE",
+                  "value": "UAE"
+                },
+                {
+                  "name": "United States",
+                  "value": "United States"
+                },
+                {
+                  "name": "Singapore",
+                  "value": "Singapore"
+                },
+                {
+                  "name": "Switzerland",
+                  "value": "Switzerland"
+                },
+                {
+                  "name": "Indonesia",
+                  "value": "Indonesia"
+                },
+                {
+                  "name": "",
+                  "value": ""
+                },
+                {
+                  "name": "United Kingdom",
+                  "value": "United Kingdom"
+                },
+                {
+                  "name": "India",
+                  "value": "India"
+                },
+                {
+                  "name": "Germany",
+                  "value": "Germany"
+                },
+                {
+                  "name": "Spain",
+                  "value": "Spain"
+                },
+                {
+                  "name": "France",
+                  "value": "France"
+                },
+                {
+                  "name": "Austria",
+                  "value": "Austria"
+                },
+                {
+                  "name": "Netherlands",
+                  "value": "Netherlands"
+                },
+                {
+                  "name": "Romania",
+                  "value": "Romania"
+                },
+                {
+                  "name": "Argentina",
+                  "value": "Argentina"
+                },
+                {
+                  "name": "Russia",
+                  "value": "Russia"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Timezone",
+              "displayName": "Timezone",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "9AM - GMT+8 (Started Working Hour)",
+              "displayName": "9AM - GMT+8 (Started Working Hour)",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Call - Time Slot (GMT+8)",
+              "displayName": "Call - Time Slot (GMT+8)",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "6PM - GMT+8",
+              "displayName": "6PM - GMT+8",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Lead stage",
+              "displayName": "Lead stage",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "New Lead",
+                  "value": "New Lead"
+                },
+                {
+                  "name": "Contacted",
+                  "value": "Contacted"
+                },
+                {
+                  "name": "Marketing Qualified",
+                  "value": "Marketing Qualified"
+                },
+                {
+                  "name": "In Communication",
+                  "value": "In Communication"
+                },
+                {
+                  "name": "Recycle Lead",
+                  "value": "Recycle Lead"
+                },
+                {
+                  "name": "Contract Signed",
+                  "value": "Contract Signed"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Calling Done",
+              "displayName": "Calling Done",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Batch Call ID",
+              "displayName": "Batch Call ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Note",
+              "displayName": "Note",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Note 2",
+              "displayName": "Note 2",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Note 3",
+              "displayName": "Note 3",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Note 4",
+              "displayName": "Note 4",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Note 5",
+              "displayName": "Note 5",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Work email",
+              "displayName": "Work email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        1872,
+        -192
+      ],
+      "id": "c680fad1-8328-4c7f-976e-d150dbbcd479",
+      "name": "Create or update a record"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.retellai.com/v2/create-phone-call",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_RETELL_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"from_number\": \"+10000000000\",\n  \"to_number\": \"{{ $json['Work phone'] }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1616,
+        -304
+      ],
+      "id": "8fa768f8-b2f5-4538-aee6-ebab294ca362",
+      "name": "Retell Batch Calling Job",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "59011152-f866-4839-9fa4-a6a2edb6fd0c",
+              "leftValue": "={{ $json['Calling Done'] }}",
+              "rightValue": 5,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        592,
+        -608
+      ],
+      "id": "d4764279-a8fc-45fd-b6c6-fcf3be84aa89",
+      "name": "Filter1"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://helloariavistacom.kommo.com/api/v4/leads",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "=[\n  {\n    \"id\": {{ $json.fields['Lead ID'] }},\n    \"custom_fields_values\": [\n      { \"field_id\": 2007126, \"values\": [ { \"value\": {{ $json.fields['Calling Done'] }} } ] }\n    ]\n  }\n]",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2064,
+        -48
+      ],
+      "id": "704ae597-6872-4c99-8a3b-79942cc498c8",
+      "name": "Update Calling_Done"
+    }
+  ],
+  "pinData": {
+    "Schedule Trigger": [
+      {
+        "json": {
+          "timestamp": "2025-11-18T09:00:09.005+08:00",
+          "Readable date": "November 18th 2025, 9:00:09 am",
+          "Readable time": "9:00:09 am",
+          "Day of week": "Tuesday",
+          "Year": "2025",
+          "Month": "November",
+          "Day of month": "18",
+          "Hour": "09",
+          "Minute": "00",
+          "Second": "09",
+          "Timezone": "Asia/Makassar (UTC+08:00)"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search records": {
+      "main": [
+        [
+          {
+            "node": "Filter Lead Stage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Retell Batch Calling Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Lead Stage": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filter1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Search records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create or update a record": {
+      "main": [
+        [
+          {
+            "node": "Update Calling_Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retell Batch Calling Job": {
+      "main": [
+        [
+          {
+            "node": "Create or update a record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Calling_Done": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "4b9cae88-633b-42ec-aa87-d436e2221281",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "903b2c8623e9ed356433d2fc4defd536557cabc79945dcb3d1b5bd0cd8351663"
+  },
+  "id": "tYO8bnSekgIGvtpO",
+  "tags": []
+}
