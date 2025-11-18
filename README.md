@@ -1,68 +1,205 @@
-# Aria Vista – AI Sales Call Workflows (n8n + Retell + Kommo)
+# Aria Vista – AI Sales Call Workflows  
+### (n8n + Retell + Kommo + Google Sheets + Google Calendar)
 
-This repository contains a fully working example of an **AI voice sales funnel** built on top of:
+This repository contains a complete example of an **AI-powered voice sales system** that:
 
-- **Retell AI** – AI voice agent that calls new leads
-- **n8n** – workflow automation engine
-- **Kommo CRM** – lead management and pipeline staging
-- **Google Sheets** – logging batch calls
-- **Google Calendar** – auto-booking meetings for interested leads
+- Automatically calls new leads using **Retell AI**
+- Processes the call results through **n8n**
+- Updates your **Kommo CRM** pipeline
+- Logs call metadata in **Google Sheets**
+- Books meetings automatically in **Google Calendar**
 
-> **Brand note:**  
-> “Aria Vista” is a **fictional project/brand** used only as a demo.  
-> No real client data, access tokens, or credentials are included in this repo.
-
----
-
-## Project Overview
-
-The system has three main pieces:
-
-1. **AI Call Prompt – “Jackson”**  
-   A Retell AI voice agent that:
-   - Calls new leads **within the next working day**
-   - Only calls during **business hours (9:00–18:00, Mon–Fri)** to respect telemarketing rules
-   - Warms up the lead, qualifies interest, and tries to **book a meeting**
-   - Avoids calling on Sundays / public holidays (configurable by you)
-
-2. **AI Sales Call – Create Batch Call** (`workflows/AI Sales Call - Create Batch Call.json`)  
-   n8n workflow that:
-   - Pulls a batch of leads from your data source (e.g. Airtable / Kommo / Sheets)
-   - Sends outbound call jobs to **Retell AI** via API
-   - Logs batch call IDs for later reference
-
-3. **AI Sales Call – Call Response** (`workflows/AI Sales Call - Call Response.json`)  
-   n8n workflow that:
-   - Is triggered by **Retell’s webhook** once a call ends
-   - Reads the call metadata and analysis from Retell
-   - Uses OpenAI (via n8n nodes) to:
-     - Classify intent: `interested`, `neutral`, or `not_interested`
-     - Decide follow-up: `book_meeting`, `send_whatsapp`, `send_email`, or `null`
-     - When appropriate, extract meeting timing from the call summary
-   - Updates the lead in **Kommo**:
-     - Moves lead to the correct **pipeline stage** (MQL, Meeting Booked, Follow-Up, Recycle, etc.)
-     - Adds **notes** with:
-       - Cleaned call summary
-       - Recording URL (from Retell)
-   - Optionally:
-     - Creates a **Google Calendar** event for booked meetings
-     - Logs / references the lead in a **Google Sheets** call log
+This is the same architecture used by modern AI-first sales teams, now provided as a **safe, anonymised template** you can import, customise, and deploy.
 
 ---
 
-## Files in This Repo
+## ⚠️ About the Demo Brand “Aria Vista”
 
-### `/workflows/AI Sales Call - Create Batch Call.json`
+**Aria Vista is a fictional demo project.**  
+There is **no real client**, and no sensitive information is included.
 
-- n8n workflow to:
-  - Fetch a list of leads to call
-  - Trigger **Retell** outbound calls using:
-    - `POST https://api.retellai.com/v2/create-phone-call`
-  - Store the `call_id` or batch ID for each lead
+All tokens, credentials, domains, and IDs in these workflow files have been:
 
-**Security / placeholders:**
+- **Removed**
+- **Replaced with placeholders**
+- **Safe for public sharing**
 
-- `Authorization` header is set to:
+You must reconnect your own credentials after importing the workflows into n8n.
 
-  ```text
-  Bearer YOUR_RETELL_API_KEY
+---
+
+# 📌 Overview
+
+This AI sales system is made of **three main components**:
+
+---
+
+## 1. 🎙 AI Call Prompt – “Jackson”
+
+A Retell AI voice agent designed to:
+
+- Call new leads **within one working day**
+- Only call during **Mon–Fri, 09:00–18:00** (configurable)
+- Respect telemarketing rules (avoids Sundays & holidays)
+- Warm up and qualify leads
+- Attempt to **book a meeting** with a human agent
+
+The voice prompt for Jackson is included in this repo (`prompts/jackson-call-prompt.md`).
+
+---
+
+## 2. 🧩 AI Sales Call – Create Batch Call  
+**File:** `workflows/AI Sales Call - Create Batch Call.json`
+
+This n8n workflow:
+
+- Fetches a batch of leads from your chosen source  
+  _(Airtable, Kommo, Google Sheets, or any API source — fully changeable by you)_
+- Creates outbound call jobs using Retell’s API: POST https://api.retellai.com/v2/create-phone-call
+- Logs each `call_id` so the system can track responses
+
+### Security Notes
+
+In this public version:
+
+- API keys are replaced with `YOUR_RETELL_API_KEY`
+- Caller ID is set to a dummy number
+- Airtable/Kommo/Sheet IDs are replaced with placeholders
+- All credentials were removed from the JSON (you reconnect them inside n8n)
+
+---
+
+## 3. ☎️ AI Sales Call – Call Response  
+**File:** `workflows/AI Sales Call - Call Response.json`
+
+This workflow is triggered **after every completed call**, via Retell’s webhook.
+
+### It performs the following automation:
+
+#### 1. Retrieve call metadata  
+From the Retell webhook payload.
+
+#### 2. Analyze the call using AI  
+OpenAI is used to classify:
+
+- `intent`:  
+- `interested`  
+- `neutral`  
+- `not_interested`
+
+- `follow_up_method`:  
+- `book_meeting`  
+- `send_whatsapp`  
+- `send_email`  
+- `null` (if no action needed)
+
+- If a call mentions a time (“tomorrow at 3pm”), extract **meeting details**
+
+#### 3. Update Kommo pipeline  
+Based on the AI’s classification, the lead is moved to appropriate stages such as:
+
+- **Meeting Booked**
+- **Follow-Up**
+- **MQL**
+- **Recycle Lead**
+
+#### 4. Write notes into Kommo  
+Each call logs:
+
+- Cleaned call summary  
+- Recording URL  
+- Meeting details (if any)
+
+#### 5. Book Google Calendar events  
+If the lead wants a meeting:
+
+- The workflow extracts the time using AI
+- Creates an event in Google Calendar
+- Adds the lead as an attendee
+- Inserts meeting notes + call summary
+
+#### 6. Log call in Google Sheets  
+The workflow reads and writes to a **Call Log sheet**, identified by: SPREADSHEET_ID
+
+---
+
+# 🛠 Setup Instructions
+
+## 1. Install & open n8n  
+Cloud or self-hosted both work.
+
+## 2. Import the workflows  
+In n8n:
+
+- **Workflows → Import → From File**
+- Upload both JSON files from `/workflows`
+
+## 3. Reconnect your credentials  
+Inside n8n, reconnect:
+
+- Kommo OAuth
+- Retell API (HTTP Request node)
+- Google Sheets OAuth
+- Google Calendar OAuth
+- OpenAI API
+
+## 4. Replace placeholders  
+Search for these:
+
+- `YOUR_RETELL_API_KEY`
+- `SPREADSHEET_ID`
+- `example-account.kommo.com`
+- `calendar@example.com`
+
+Replace with your actual data.
+
+## 5. Configure Retell webhook  
+Paste the **Production Webhook URL** from the “Call Response” workflow into your Retell dashboard.
+
+## 6. Customize the voice prompt  
+Edit `prompts/jackson-call-prompt.md` to fit your brand/system.
+
+---
+
+# 🧪 Testing
+
+1. Add a dummy lead into your CRM or source sheet  
+2. Trigger the **Create Batch Call** workflow  
+3. Wait for Retell to complete the call  
+4. Observe how:
+   - Notes get added
+   - Pipeline status changes
+   - Google Calendar events get created (if relevant)
+   - Google Sheet logs get updated
+
+---
+
+# 💡 Why This Repo Exists
+
+To provide a **transparent, safe, open-source example** of:
+
+- AI voice sales funnels  
+- CRM-integrated automations  
+- Multi-step LLM-driven decision logic  
+- Real-world AI → CRM → Calendar workflows  
+
+Without exposing any:
+- Client information  
+- Tokens  
+- API credentials  
+- Personal workspace URLs  
+
+Use it as a template for:
+- Real estate  
+- SaaS sales  
+- Agencies  
+- Service businesses  
+- High-volume lead handling  
+
+---
+
+# 📄 License
+
+This project is released under the **MIT License**, allowing commercial and private use.
+
+---
