@@ -1,0 +1,964 @@
+{
+  "name": "Aria Vista - Call Response copy",
+  "nodes": [
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Aria - Call Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Batch Call ID",
+              "lookupValue": "={{ $json.body.call.call_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        176,
+        -272
+      ],
+      "id": "7b26a69c-15d9-4a9c-b2cc-14951d5a4f30",
+      "name": "Get row(s) in sheet"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  // 1. Parse the JSON string from the input item.\n  const leadData = JSON.parse(item.json.data);\n\n  // 2. Safely extract and simplify contacts in one line.\n  //    The `?.` prevents errors if 'contacts' doesn't exist,\n  //    and `|| []` provides an empty array as a fallback.\n  const contacts = leadData._embedded?.contacts?.map(c => ({\n    id: c.id,\n    name: c.name,\n  })) || [];\n\n  // 3. Safely get the company ID.\n  const companyId = leadData._embedded?.companies?.[0]?.id || null;\n\n  // 4. Return the new, clean object for this item.\n  //    The .map function automatically collects all returned\n  //    objects into the final output array.\n  return {\n    lead_id: leadData.id,\n    lead_name: leadData.name,\n    status_id: leadData.status_id,\n    pipeline_id: leadData.pipeline_id,\n    created_date: new Date(leadData.created_at * 1000).toISOString(),\n    company_id: companyId,\n    contacts: contacts,\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        -272
+      ],
+      "id": "528aca27-a9cd-48c5-b197-1891ff4d0401",
+      "name": "Extract Lead Detail"
+    },
+    {
+      "parameters": {
+        "url": "=https://example-account.kommo.com/api/v4/leads/{{ $json['Lead ID'] }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "with",
+              "value": "contacts"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        400,
+        -272
+      ],
+      "id": "02206343-ac1d-4fc9-a743-fd2a210b17f6",
+      "name": "Get Lead Detail",
+      "credentials": null
+    },
+          "__rl": true,
+          "value": "gpt-5-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-5-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are an expert sales call analyst. Your task is to analyze the following call summary and extract key information.\n\nFirst, classify the overall customer intent into one of three categories: \"interested\", \"not_interested\", or \"neutral\".\n\nSecond, if and only if the intent is \"interested\", determine the specific follow-up action requested by the customer. The follow-up action must be one of the following: \"book_meeting\", \"send_whatsapp\", or \"send_email\".\n\nIf the user appears interested in a virtual tour or scheduling a call or meeting, regardless of their preferred contact methods, the follow-up action should be “book_meeting”.\n\nThird, if the follow-up action is \"book_meeting\", extract the specific details mentioned for the meeting (e.g., \"Tomorrow at 3 p.m.\").\n\nYou must provide your response ONLY as a single JSON object. The JSON object must have three keys: \"intent\", \"follow_up_method\", and \"meeting_details\".\n- \"intent\" must be one of \"interested\", \"not_interested\", or \"neutral\".\n- \"follow_up_method\" must be one of \"send_whatsapp\", \"send_email\", \"book_meeting\", or null if the intent is not 'interested'.\n- \"meeting_details\" must be a string containing the meeting time, or null if no meeting was discussed.\n\nHere are some examples of perfect responses:\n- For a lead who wants to schedule a call: {\"intent\": \"interested\", \"follow_up_method\": \"book_meeting\", \"meeting_details\": \"Tomorrow at 3 p.m.\"}\n- For a lead who asks for a brochure via WhatsApp: {\"intent\": \"interested\", \"follow_up_method\": \"send_whatsapp\", \"meeting_details\": null}\n- For a lead who is not interested: {\"intent\": \"not_interested\", \"follow_up_method\": null, \"meeting_details\": null}\n- For a lead who said they are busy: {\"intent\": \"neutral\", \"follow_up_method\": null, \"meeting_details\": null}\n\nHere is the call summary to analyze:\n{{ $('Respond from Retell').item.json.body.call.call_analysis.call_summary }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {
+          "temperature": 1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        848,
+        -272
+      ],
+      "id": "f0bb59d2-d412-4153-917d-42cb81670cc8",
+      "name": "Message a model",
+      "credentials": null
+    },
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message.content.intent }}",
+                    "rightValue": "interested",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "340d478c-ffcf-44a6-aa35-3b7cbf7de554"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "interested"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "8bb7dfa4-1baf-44fe-9c2b-6d65b0cac70a",
+                    "leftValue": "={{ $json.message.content.intent }}",
+                    "rightValue": "not_interested",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "not_interested"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "d5abc556-cb5c-4586-b718-bbd581557192",
+                    "leftValue": "={{ $json.message.content.intent }}",
+                    "rightValue": "neutral",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "neutral"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1248,
+        -288
+      ],
+      "id": "e650903e-7972-4820-a475-cdf4afa6a74b",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "3a9be6cf-343a-4ba1-8a00-0cb565637090",
+              "leftValue": "={{ $json.message.content.follow_up_method }}",
+              "rightValue": "book_meeting",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1472,
+        -608
+      ],
+      "id": "fe1249b0-41bc-4289-bcc9-4641569b6fbf",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze this call information to determine the meeting time and date\nCall time: {{ $now }}\nSummary: \n{{ $('Respond from Retell').item.json.body.call.call_analysis.call_summary }}\n\nUse Bali Time GMT+8 by default, if no timezone or location stated",
+        "options": {
+          "systemMessage": "You are an agent tasked with creating events on Google Calendar. Use the available tools to schedule events accurately, including optional start dates if provided. Prioritize clarity and correctness when interpreting user input to form calendar events.",
+          "returnIntermediateSteps": true
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.1,
+      "position": [
+        2144,
+        -864
+      ],
+      "id": "2bbfe8d2-cad2-41dd-839b-952f350f13b3",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the summary from the previous step's input\nconst summary = $('Respond from Retell').first().json.body.call.call_analysis.call_summary;\n// Use the .trim() function to remove any newlines or spaces\n// from the beginning and end of the text.\nconst cleanedSummary = summary.trim();\n\n// Return the cleaned summary in a new field\nreturn [{\n  json: {\n    ...items[0].json, // This includes all the original data like lead_id\n    cleaned_call_summary: cleanedSummary\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        -464
+      ],
+      "id": "9d604835-6659-445f-9992-68e22127c731",
+      "name": "Clean Call Summary"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        2144,
+        -640
+      ],
+      "id": "94258531-39cf-4fee-9baf-7f4b6a767f3e",
+      "name": "OpenAI Chat Model",
+      "credentials": null
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "calendar@example.com",
+          "mode": "list",
+          "cachedResultName": "calendar@example.com"
+        },
+        "start": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', `Use ISO 8601 format`, 'string') }}",
+        "end": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', `30 minutes from start time`, 'string') }}",
+        "additionalFields": {
+          "attendees": [
+            "={{ $json.contact_email }}"
+          ],
+          "description": "={{ $('Respond from Retell').item.json.body.call.call_analysis.call_summary }}",
+          "location": "=https://example-account.kommo.com/leads/detail/ {{ $('Get row(s) in sheet').item.json['Lead ID'] }}",
+          "summary": "Property Meeting | Aria Vista"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        2304,
+        -640
+      ],
+      "id": "dd210186-c9a5-489a-af7c-5d7992f83212",
+      "name": "Create an event in Google Calendar",
+      "credentials": null
+    },
+    {
+      "parameters": {
+        "url": "=https://example-account.kommo.com/api/v4/contacts/{{ $('Get row(s) in sheet').item.json['Contact ID'] }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "with",
+              "value": "contacts"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1696,
+        -768
+      ],
+      "id": "8fc389a5-0645-4e8e-9c4d-6372fc29264e",
+      "name": "Get Contact Detail",
+      "credentials": null
+    },
+    {
+      "parameters": {
+        "jsCode": "// Use .map() to transform each input item into a simplified output object.\nreturn items.map(item => {\n  // 1. Parse the JSON string from the 'data' property into a usable object.\n  const contactData = JSON.parse(item.json.data);\n\n  // 2. Find the custom field object for the phone number.\n  const phoneField = contactData.custom_fields_values?.find(\n    field => field.field_code === 'PHONE'\n  );\n\n  // 3. Find the custom field object for the email address.\n  const emailField = contactData.custom_fields_values?.find(\n    field => field.field_code === 'EMAIL'\n  );\n\n  // 4. Safely extract the values from the found fields.\n  const phoneNumber = phoneField?.values?.[0]?.value || null;\n  const emailAddress = emailField?.values?.[0]?.value || null;\n\n  // 5. Safely extract the associated company ID.\n  const companyId = contactData._embedded?.companies?.[0]?.id || null;\n\n  // 6. Return a new, clean object with all the essential information.\n  return {\n    contact_id: contactData.id,\n    contact_name: contactData.name,\n    phone_number: phoneNumber,\n    contact_email: emailAddress,\n    associated_company_id: companyId\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        -768
+      ],
+      "id": "58adfa53-c460-4583-81df-53921015986e",
+      "name": "Extract Contact Detail"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the summary from the previous step's input\nconst summary = $('Respond from Retell').first().json.body.call.call_analysis.call_summary;\n// Use the .trim() function to remove any newlines or spaces\n// from the beginning and end of the text.\nconst cleanedSummary = summary.trim();\n\n// Return the cleaned summary in a new field\nreturn [{\n  json: {\n    ...items[0].json, // This includes all the original data like lead_id\n    cleaned_call_summary: cleanedSummary\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2768,
+        -768
+      ],
+      "id": "f74319b4-5f98-48e0-8bdc-f3c9c7be025f",
+      "name": "Clean Call Summary1"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://example-account.kommo.com/api/v4/leads/{{ $('Extract Lead Detail').item.json.lead_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"pipeline_id\":11610379,\"status_id\":89201283}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1696,
+        -464
+      ],
+      "id": "04fb273a-c2b1-4ffc-81bc-89949347f28c",
+      "name": "Move Lead Stage | FU",
+      "credentials": null
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://example-account.kommo.com/api/v4/leads/{{ $('Extract Lead Detail').item.json.lead_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"pipeline_id\":11610379,\"status_id\":89170727}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2544,
+        -752
+      ],
+      "id": "43ca90fc-4de3-4edc-8eb9-81e94e366b45",
+      "name": "Move Lead Stage | Demo Meeting",
+      "credentials": null
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the summary from the previous step's input\nconst summary = $('Respond from Retell').first().json.body.call.call_analysis.call_summary;\n// Use the .trim() function to remove any newlines or spaces\n// from the beginning and end of the text.\nconst cleanedSummary = summary.trim();\n\n// Return the cleaned summary in a new field\nreturn [{\n  json: {\n    ...items[0].json, // This includes all the original data like lead_id\n    cleaned_call_summary: cleanedSummary\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        -256
+      ],
+      "id": "b5c69af7-d602-4d4d-9fdd-cac08090c5a5",
+      "name": "Clean Call Summary2"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://example-account.kommo.com/api/v4/leads/{{ $('Extract Lead Detail').item.json.lead_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"pipeline_id\":11610379,\"status_id\":89201019}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1696,
+        -256
+      ],
+      "id": "591c80c2-c504-47b0-8389-9f1784632b04",
+      "name": "Move Lead Stage | Recycle Lead",
+      "credentials": null
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://example-account.kommo.com/api/v4/leads/{{ $('Extract Lead Detail').item.json.lead_id }}/notes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "=[\n  {\n    \"note_type\": \"common\",\n    \"params\": {\n      \"text\":\"{{ $json.cleaned_call_summary }}\"\n  }\n}\n]",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2144,
+        -64
+      ],
+      "id": "a867109e-4f4f-461e-b037-8fb7b5cfbd5f",
+      "name": "Create Note3",
+      "credentials": null
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the summary from the previous step's input\nconst summary = $('Respond from Retell').first().json.body.call.call_analysis.call_summary;\n// Use the .trim() function to remove any newlines or spaces\n// from the beginning and end of the text.\nconst cleanedSummary = summary.trim();\n\n// Return the cleaned summary in a new field\nreturn [{\n  json: {\n    ...items[0].json, // This includes all the original data like lead_id\n    cleaned_call_summary: cleanedSummary\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        -64
+      ],
+      "id": "fdf7fd7b-7897-45a9-b626-66fad20db113",
+      "name": "Clean Call Summary3"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://example-account.kommo.com/api/v4/leads/{{ $('Extract Lead Detail').item.json.lead_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"pipeline_id\":11610379,\"status_id\":89170723}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1696,
+        -64
+      ],
+      "id": "4afa7c8e-9c05-4614-9ddf-04e491feb689",
+      "name": "Move Lead Stage | FU1",
+      "credentials": null
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://example-account.kommo.com/api/v4/leads/{{ $('Extract Lead Detail').item.json.lead_id }}/notes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "=[\n  {\n    \"note_type\": \"common\",\n    \"params\": {\n      \"text\":\"Recording url: {{ $('Respond from Retell').item.json.body.call.recording_url }}\"\n  }\n}\n]",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2368,
+        -64
+      ],
+      "id": "ed98573b-964f-4ebb-9f00-26a89697113a",
+      "name": "Create Note4",
+      "credentials": null
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://example-account.kommo.com/api/v4/leads/{{ $('Extract Lead Detail').item.json.lead_id }}/notes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "=[\n  {\n    \"note_type\": \"common\",\n    \"params\": {\n      \"text\":\"{{ $json.cleaned_call_summary }}\"\n  }\n}\n]",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2160,
+        -256
+      ],
+      "id": "1abc817b-aaf6-427a-b4dd-abb4fbc34b5a",
+      "name": "Create Note5",
+      "credentials": null
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://example-account.kommo.com/api/v4/leads/{{ $('Extract Lead Detail').item.json.lead_id }}/notes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "=[\n  {\n    \"note_type\": \"common\",\n    \"params\": {\n      \"text\":\"Recording url: {{ $('Respond from Retell').item.json.body.call.recording_url }}\"\n  }\n}\n]",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2384,
+        -256
+      ],
+      "id": "c9de693f-ef85-48d7-9674-7bc18ed04c76",
+      "name": "Create Note6",
+      "credentials": null
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://example-account.kommo.com/api/v4/leads/{{ $('Extract Lead Detail').item.json.lead_id }}/notes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "=[\n  {\n    \"note_type\": \"common\",\n    \"params\": {\n      \"text\":\"{{ $json.cleaned_call_summary }}\"\n  }\n}\n]",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2144,
+        -448
+      ],
+      "id": "92b30766-33aa-470b-959e-be774dbe6614",
+      "name": "Create Note",
+      "credentials": null
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://example-account.kommo.com/api/v4/leads/{{ $('Extract Lead Detail').item.json.lead_id }}/notes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "=[\n  {\n    \"note_type\": \"common\",\n    \"params\": {\n      \"text\":\"Recording url: {{ $('Respond from Retell').item.json.body.call.recording_url }}\"\n  }\n}\n]",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2368,
+        -448
+      ],
+      "id": "c4491083-2cbd-45e9-b03f-45086818b1b7",
+      "name": "Create Note7",
+      "credentials": null
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://example-account.kommo.com/api/v4/leads/{{ $('Extract Lead Detail').item.json.lead_id }}/notes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "=[\n  {\n    \"note_type\": \"common\",\n    \"params\": {\n      \"text\":\"{{ $json.cleaned_call_summary }}\"\n  }\n}\n]",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2944,
+        -576
+      ],
+      "id": "3822d06e-7c3d-4e97-a31c-cec175160cca",
+      "name": "Create Note8",
+      "credentials": null
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://jassonnvirtue.kommo.com/api/v4/leads/{{ $('Extract Lead Detail').item.json.lead_id }}/notes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "=[\n  {\n    \"note_type\": \"common\",\n    \"params\": {\n      \"text\":\"Recording url: {{ $('Respond from Retell').item.json.body.call.recording_url }}\"\n  }\n}\n]",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3168,
+        -576
+      ],
+      "id": "34a357b3-9d09-4e3a-ad67-f440168ff075",
+      "name": "Create Note9",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "tTjkeJc6jOp1svN6",
+          "name": "Kommo CRM - Virtue test for Nuanu"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cd5cf62a-fa39-43e9-9d98-97107951df8b",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -48,
+        -272
+      ],
+      "id": "42d99c1d-b971-4940-855c-b5d1755c2063",
+      "name": "Respond from Retell",
+      "webhookId": "cd5cf62a-fa39-43e9-9d98-97107951df8b"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Get Lead Detail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Lead Detail": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Lead Detail": {
+      "main": [
+        [
+          {
+            "node": "Extract Lead Detail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Move Lead Stage | Recycle Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Move Lead Stage | FU1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Get Contact Detail",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Move Lead Stage | FU",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Call Summary": {
+      "main": [
+        [
+          {
+            "node": "Create Note",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create an event in Google Calendar": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Contact Detail": {
+      "main": [
+        [
+          {
+            "node": "Extract Contact Detail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Contact Detail": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Call Summary1": {
+      "main": [
+        [
+          {
+            "node": "Create Note8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Move Lead Stage | Demo Meeting",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move Lead Stage | FU": {
+      "main": [
+        [
+          {
+            "node": "Clean Call Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move Lead Stage | Demo Meeting": {
+      "main": [
+        [
+          {
+            "node": "Clean Call Summary1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Call Summary2": {
+      "main": [
+        [
+          {
+            "node": "Create Note5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move Lead Stage | Recycle Lead": {
+      "main": [
+        [
+          {
+            "node": "Clean Call Summary2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Call Summary3": {
+      "main": [
+        [
+          {
+            "node": "Create Note3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move Lead Stage | FU1": {
+      "main": [
+        [
+          {
+            "node": "Clean Call Summary3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Note3": {
+      "main": [
+        [
+          {
+            "node": "Create Note4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Note5": {
+      "main": [
+        [
+          {
+            "node": "Create Note6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Note": {
+      "main": [
+        [
+          {
+            "node": "Create Note7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Note8": {
+      "main": [
+        [
+          {
+            "node": "Create Note9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond from Retell": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a1c69979-d198-4ff8-980c-b2c2473410ff",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "413ac70123e95dc003063c5ee268d8b628c21a7f9a0e197a594785435e4401fc"
+  },
+  "id": "BsGA8wv6XTn0o3I4",
+  "tags": []
+}
