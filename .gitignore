@@ -1,0 +1,10 @@
+# macOS
+.DS_Store
+
+# Node / n8n related (if you add local env)
+node_modules/
+.env
+.env.*
+.idea/
+.vscode/
+dist/
