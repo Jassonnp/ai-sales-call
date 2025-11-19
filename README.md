@@ -13,6 +13,22 @@ This is the same architecture used by modern AI-first sales teams, now provided 
 
 ---
 
+### 🎥 Demo Video
+https://youtu.be/mRPh2VbmtUQ
+
+This demo shows my AI Voice Lead Qualification system in action.
+A new lead enters the CRM, and based on local telemarketing rules and working hours, the AI automatically schedules a call using Retell and Twilio.
+
+The agent speaks naturally, warms up the lead, confirms their details, and asks qualification questions. Everything is handled by the AI, from conversation flow to intent classification.
+
+After the call, the system logs the result in Google Sheets and updates the CRM through n8n.
+
+If the lead is interested, the AI checks Google Calendar availability through an MCP server and books a meeting automatically.
+
+The goal is simple: respond faster, reduce manual cold calling, and deliver more qualified leads to the sales team.
+
+---
+
 ## ⚠️ About the Demo Brand “Aria Vista”
 
 **Aria Vista is a fictional demo project.**  
